@@ -10,7 +10,7 @@ import torchhd
 from torchhd import embeddings
 
 class HDCRegressor:
-    def __init__(self, input_shape, device='cpu', l2_lambda=2e-3, learning_rate=1e-3, hvs_len=1000):
+    def __init__(self, input_shape, device='cpu', l2_lambda=2e-5, learning_rate=1e-10, hvs_len=10000):
         self.input_shape = input_shape
         self.device = torch.device(device)
         self.args = {

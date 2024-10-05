@@ -58,7 +58,7 @@ import tensorflow as tf
 from preprocessing import sample_wise_z_score_normalization, sample_wise_z_score_denormalization
 from adaptive_linear_model import AdaptiveFilteringModel
 
-n_epochs = 1000
+n_epochs = 30
 
 cur_activity_X, ms, stds = sample_wise_z_score_normalization(X.copy())
 
@@ -157,6 +157,8 @@ actuals = np.array(actuals)
 print(f"Predictions: {predictions}")
 print(f"Actuals: {actuals}")
 
+print("Finished Heart Rate Extraction \n")
+
 
 # Plotting results:
 # Ground truth heart rate, 
@@ -180,7 +182,7 @@ plt.ylabel('Heart Rate (Beats Per Minute)')
 
 plt.title('Pr')
 
-plt.show()
+# plt.show()
 
 
 # Plotting samples which were retained with a 10 BPM threshold
@@ -202,7 +204,7 @@ plt.xlabel('Time (sec.)')
 plt.ylabel('Heart Rate (Beats Per Minute)')
 plt.title('Heart rate inference with retention')
 
-plt.show()
-print("Finished Heart Rate Extraction \n")
+# plt.show()
+print("Finished Plotting Heart Rate Extraction \n")
 
 print("FINISH ALL \n")

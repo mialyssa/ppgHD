@@ -2,6 +2,13 @@
 
 Using KID-PPG as a base to implement Hyperdimensional Computing (HDC)
 
+To run, access the Jupyter Demo in `KID_PPG_demo.ipynb`. 
+
+Alternatively, you can enter the kid_ppg directory \
+`cd src/kid_ppg`
+
+And run the `demo_vis.py` file \
+`python demo_vis.py` 
 
 ## KID-PPG: Knowledge-Informed Deep Learning for Extracting Heart Rate from Photoplethysmography Signals 
 
