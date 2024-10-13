@@ -10,15 +10,13 @@ import torchhd
 from torchhd import embeddings
 
 class HDCRegressor:
-    def __init__(self, input_shape, device='cpu', l2_lambda=2e-3, learning_rate=1e-8, hvs_len = 10000 ):
+    def __init__(self, input_shape, device='cpu', learning_rate=1e-8, hvs_len = 30000):
         self.input_shape = input_shape
         self.device = torch.device(device)
-        self.l2_lambda = l2_lambda
+     
         self.lr = learning_rate
         self.hvs_len = hvs_len
-        self.args = {
-            'l2_lambda': l2_lambda
-        }
+       
         self.dimensions = hvs_len
         self.lr = learning_rate
         self.M = torch.zeros(1, self.dimensions).to(self.device)
@@ -38,9 +36,9 @@ class HDCRegressor:
     def forward(self, x) -> torch.Tensor:
         enc = self.encode(x)
         res = F.linear(enc, self.M)
-        return res
+        return res  #prediction scalar 
 
-    def train(self, X_filtered_temp, y, epochs=100):
+    def train(self, X_filtered_temp, y, epochs=50):
         train_data = X_filtered_temp
         label = y
         
@@ -49,9 +47,11 @@ class HDCRegressor:
             for i in tqdm(range(train_data.shape[0])):  # Loop over each sample
                 self._process_one_batch(train_data, label, i, mode="train")
         print("training epochs:", epochs)
-        print("l2 lambda: ", self.l2_lambda)
         print("learning rate: ", self.lr)
         print("hvs_len: ", self.hvs_len)
+        
+        
+        
         
     def test(self, X_filtered: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         predictions = []
@@ -59,17 +59,9 @@ class HDCRegressor:
 
         for i in range(X_filtered.shape[0]):
             with torch.no_grad(): 
-                x_seq = torch.Tensor(X_filtered[i, :]).to(self.device)  # shape (256,)
-                y_true = torch.Tensor(y[i]).to(self.device)
-                
-               
-                y_pred, _ = self._process_one_batch(X_filtered, y, i, mode="test")
-
+                y_pred, y_true = self._process_one_batch(X_filtered, y, i, mode="test")
                 predictions.append(y_pred.item())  
                 actuals.append(y_true.item())      
-
-        # print(predictions)
-        # print(actuals)
         # Convert lists to ndarray
         predictions = np.array(predictions)
         actuals = np.array(actuals)
@@ -85,20 +77,18 @@ class HDCRegressor:
         #     return torch.normal(mean=x_seq, std=torch.full(x_seq.shape, 0.5))
         x_seq = torch.Tensor(data[idx, :]).to(self.device)  #256
         y_true = torch.Tensor(labels[idx]).to(self.device)  # Labels corresponding to the sequence
+        
         # if mode == "test":
         #     x_seq = inject(x_seq)
      
         if mode == "train":
-            encoded_hv = self.encode(x_seq)
-            self.model_update(encoded_hv, y_true)
+            encoded_x = self.encode(x_seq)
+            self.model_update(encoded_x, y_true)
 
         if mode == "test":
-            y_pred = self.forward(x_seq)
-            return y_pred, y_true
+            prediction = self.forward(x_seq) #no model update 
+            return prediction, y_true
         
-        if mode not in ["train", "test"]:
-            raise ValueError(f"Invalid mode '{mode}'. Choose either 'train' or 'test'.")
-
 
 class KID_PPG_HDC:
     """KID-PPG class with HDC integration. Defines the KID-PPG model using HDC."""
@@ -137,7 +127,9 @@ class KID_PPG_HDC:
         predictions, actuals = self.hdc_model.test(x,y)
         return predictions, actuals
         
-    
+        
+        
+    # this function belongs to original KID-PPG
     def predict_threshold(self, x: np.ndarray, threshold: np.float32) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Estimates HR probability given PPG input and calculates the probability of error.
 
