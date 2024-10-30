@@ -10,7 +10,7 @@ import torchhd
 from torchhd import embeddings
 
 class HDCRegressor:
-    def __init__(self, input_shape, device='cpu', l2_lambda=2e-3, learning_rate=1e-8, hvs_len = 10000 ):
+    def __init__(self, input_shape, device='cpu', l2_lambda=2e-3, learning_rate=1e-5, hvs_len = 10000 ):
         self.input_shape = input_shape
         self.device = torch.device(device)
         self.l2_lambda = l2_lambda
@@ -27,12 +27,13 @@ class HDCRegressor:
         
     def encode(self, x):
         #Encode input sequence into a hv
-        return self.project(x)
-        #return torchhd.hard_quantize(sample_hv)
+        res = self.project(x)
+        # return res
+        return torchhd.hard_quantize(res)
         
     def model_update(self, x, y):
         update = self.M + self.lr * (y - (F.linear(x, self.M))) * x
-        update = update.mean(0,keepdim=True)
+        # update = update.mean(0,keepdim=True)
         self.M = update
 
     def forward(self, x) -> torch.Tensor:
@@ -41,32 +42,19 @@ class HDCRegressor:
         return res
 
     def train(self, X_filtered_temp, y, epochs=100):
-        train_data = X_filtered_temp
-        label = y
-        
         for epoch in range(epochs):
             print(f"Epoch {epoch + 1}/{epochs}")  # Optional: Print the current epoch
-            for i in tqdm(range(train_data.shape[0])):  # Loop over each sample
-                self._process_one_batch(train_data, label, i, mode="train")
-        print("training epochs:", epochs)
-        print("l2 lambda: ", self.l2_lambda)
-        print("learning rate: ", self.lr)
-        print("hvs_len: ", self.hvs_len)
+            for i in tqdm(range(X_filtered_temp.shape[0])):  # Loop over each sample
+                self._process_one_batch(X_filtered_temp, y, i, mode="train")
         
     def test(self, X_filtered: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         predictions = []
         actuals = []
 
         for i in range(X_filtered.shape[0]):
-            with torch.no_grad(): 
-                x_seq = torch.Tensor(X_filtered[i, :]).to(self.device)  # shape (256,)
-                y_true = torch.Tensor(y[i]).to(self.device)
-                
-               
-                y_pred, _ = self._process_one_batch(X_filtered, y, i, mode="test")
-
-                predictions.append(y_pred.item())  
-                actuals.append(y_true.item())      
+            y_pred, _ = self._process_one_batch(X_filtered, y, i, mode="test")
+            predictions.append(y_pred.item())  
+            actuals.append(y_true.item())      
 
         # print(predictions)
         # print(actuals)
@@ -77,17 +65,13 @@ class HDCRegressor:
     
     
     def _process_one_batch(
-        self, data: np.ndarray, labels: np.ndarray, idx: int, mode: str
-    ) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
-
+        self, data: np.ndarray, labels: np.ndarray, idx: int, mode: str) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
         # inject noise
         # def inject(x_seq):
         #     return torch.normal(mean=x_seq, std=torch.full(x_seq.shape, 0.5))
         x_seq = torch.Tensor(data[idx, :]).to(self.device)  #256
         y_true = torch.Tensor(labels[idx]).to(self.device)  # Labels corresponding to the sequence
-        # if mode == "test":
-        #     x_seq = inject(x_seq)
-     
+            
         if mode == "train":
             encoded_hv = self.encode(x_seq)
             self.model_update(encoded_hv, y_true)
@@ -102,7 +86,7 @@ class HDCRegressor:
 
 class KID_PPG_HDC:
     """KID-PPG class with HDC integration. Defines the KID-PPG model using HDC."""
-    def __init__(self, input_shape, load_weights: bool = False, device='cpu', hvs_len=30000):
+    def __init__(self, input_shape, load_weights: bool = False, device='cpu', hvs_len=20000):
         """Initializes KID-PPG with HDC.
 
         Args:
